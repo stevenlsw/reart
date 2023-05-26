@@ -63,12 +63,796 @@
             <span class="authors-block">&ast; Equal Advising</span>
           </div>
 
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">CVPR 2023</span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://openaccess.thecvf.com/content/CVPR2023/papers/Liu_Building_Rearticulable_Models_for_Arbitrary_3D_Objects_From_4D_Point_CVPR_2023_paper.pdf"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://openaccess.thecvf.com/content/CVPR2023/html/Liu_Building_Rearticulable_Models_for_Arbitrary_3D_Objects_From_4D_Point_CVPR_2023_paper.html"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <!-- Video Link. -->
+              <span class="link-block">
+                <a href="https://youtu.be/Bdolp3FTZUc"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video</span>
+                </a>
+              </span>
+              <!-- Slide Link. -->
+              <span class="link-block">
+                <a href="https://drive.google.com/file/d/1wkNbiNt-h1xXn2mq7KcDSSj4EVkAOAQu/view?usp=sharing"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-slideshare"></i>
+                  </span>
+                  <span>Slide</span>
+                </a>
+              </span>
+              
+              <!-- Data Link. -->
+              <!-- <span class="link-block">
+                <a href=""
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-google-drive"></i>
+                  </span>
+                  <span>Data</span>
+                  </a>
+              </span> -->
+
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/stevenlsw/reart"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code (Coming Soon)</span>
+                  </a>
+              </span>
+            </div>
+
           </div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="hero-body">
+      <video id="teaser" autoplay muted loop playsinline width="100%">
+        <source src="static/videos/teaser.mp4" type="video/mp4" />
+      </video>
+
+      <br> 
+      <h2 class="subtitle has-text-centered">
+        Given a short point cloud sequence of arbitrary articulated object, our method outputs an animatable 3D model, 
+        which can be retargeted to novel poses.
+      </h2>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <p>
+            We build rearticulable models for arbitrary everyday
+            man-made objects containing an arbitrary number of parts
+            that are connected together in arbitrary ways via 1 degreeof-
+            freedom joints. Given point cloud videos of such everyday
+            objects, our method identifies the distinct object parts,
+            what parts are connected to what other parts, and the properties
+            of the joints connecting each part pair. We do this
+            by jointly optimizing the part segmentation, transformation,
+            and kinematics using a novel energy minimization framework.
+            Our inferred animatable models, enables retargeting
+            to novel poses with sparse point correspondences guidance.
+            We test our method on a new articulating robot dataset,
+            and the Sapiens dataset with common daily objects, 
+            as well as real-world scans. Experiments
+            show that our method outperforms two leading
+            prior works on various metrics.
+          </p>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+
+    <!-- Paper video. -->
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Video</h2>
+        <div class="publication-video">
+          <iframe src="https://www.youtube.com/embed/Bdolp3FTZUc?rel=0&amp;showinfo=0"
+                  frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+    <!--/ Paper video. -->
+  </div>
+</section>
+
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column">
+        <h2 class="title is-3">Problem formulation</h2>
+        <div class="content has-text-justified">
+          <p>
+            The articulation model comprises of n parts that form a kinematic tree. 
+            A coordinate-based semantic field f is used to parameterize the part segmentation, 
+            and motions are parameterized by screw representation. 
+            The objective is to estimate these parameters using an analysis-by-synthesis approach 
+            by energy minimization. The energy measures the geometric and motion compatibility between inferred model and observed point cloud sequence. 
+          </p>
+          <center><img src="static/figs/formulation.png" alt="setting" width="80%" /></center>
+        </div>
+        
+        <h2 class="title is-3">Framework</h2>
+        <div class="content has-text-justified">
+          <p>
+            Given it is challenging to optimize directly, 
+            we propose a relaxation-projection approach. 
+            In relaxation stage, we estimate model parameters without constraints, 
+            and we cast the solution to a valid kinematic tree in the projection stage and taken it as initialization for re-optimization. 
+          </p>
+          <video id="main" autoplay controls muted loop playsinline width="100%">
+            <source src="static/videos/framework.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<div class="columns is-centered has-text-centered">
+  <div class="column is-full-width">
+    <h2 class="title is-3">Robot Results</h2>
+  </div>
+</div>
+
+<div class="columns is-centered has-text-centered">
+  <div class="column is-2">
+    <h2 class="title is-4">Input</h2>
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/jvrc/input.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <h2 class="title is-4">Part Seg</h2>
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/jvrc/pred_seg.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <h2 class="title is-4">Skeleton</h2>
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/jvrc/pred_skel.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <h2 class="title is-4">Reanimate</h2>
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/jvrc/reanimate_pc.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="columns is-centered has-text-centered">
+  
+  <div class="column is-2">
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/solo/input.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/solo/pred_seg.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/solo/pred_skel.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <div class="column is-2">
+    <div class="columns is-centered">
+      <div class="column content">
+        <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+          <source src="static/videos/robots/solo/reanimate_pc.mp4" type="video/mp4"/>
+        </video>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/robots/ur5/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/robots/ur5/pred_seg.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/robots/ur5/pred_skel.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/robots/ur5/reanimate_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+    <details>
+      <summary class="title is-5 button">Click here for more results</summary>
+      
+      <div class="columns is-centered has-text-centered">
+  
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/bolt/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/bolt/pred_seg.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/bolt/pred_skel.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/bolt/reanimate_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+      </div>
+
+      <div class="columns is-centered has-text-centered">
+  
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/reachy/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/reachy/pred_seg.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/reachy/pred_skel.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/reachy/reanimate_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+      </div>
+    
+      <div class="columns is-centered has-text-centered">
+  
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/cassie/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/cassie/pred_seg.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/cassie/pred_skel.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/cassie/reanimate_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+      </div>
+
+      <div class="columns is-centered has-text-centered">
+  
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/barrett/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/barrett/pred_seg.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/barrett/pred_skel.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/robots/barrett/reanimate_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      
+    </details>
+  </div>
+
+
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-full-width">
+      <h2 class="title is-3">Daily Object (Sapien) Results</h2>
+    </div>
+  </div>
+  
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-2">
+      <h2 class="title is-4">Input</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/107/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <h2 class="title is-4">Model</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/107/pred_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <h2 class="title is-4">Reanimate</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/107/reanimate.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/287/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/287/pred_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/287/reanimate.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/272/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/272/pred_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/sapien/272/reanimate.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+    <details>
+      <summary class="title is-5 button">Click here for more results</summary>
+    
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/212/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/212/pred_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/212/reanimate.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/343/input.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/343/pred_pc.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      
+        <div class="column is-2">
+          <div class="columns is-centered">
+            <div class="column content">
+              <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+                <source src="static/videos/sapien/343/reanimate.mp4" type="video/mp4"/>
+              </video>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </details>
+  </div>
+
+  </div>
+
+  
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-full-width">
+      <h2 class="title is-3">Real Scan Results</h2>
+    </div>
+  </div>
+  
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-2">
+      <h2 class="title is-4">Input</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/toy/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <h2 class="title is-4">Model</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/toy/pred_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <h2 class="title is-4">Reanimate</h2>
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/toy/reanimate.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+
+  <div class="columns is-centered has-text-centered">
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/switch/input.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/switch/pred_pc.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+    <div class="column is-2">
+      <div class="columns is-centered">
+        <div class="column content">
+          <video playsinline="" autoplay="" loop="" preload="" muted="" width="100%" style="">
+            <source src="static/videos/real/switch/reanimate.mp4" type="video/mp4"/>
+          </video>
+        </div>
+      </div>
+    </div>
+  
+  </div>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@inproceedings{liu2023reart,
+  title={Building Rearticulable Models for Arbitrary 3D Objects from 4D Point Clouds},
+  author={Liu, Shaowei and Gupta, Saurabh and Wang, Shenlong},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2023}
+}
+</code></pre>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <a class="icon-link"
+         href="">
+        <i class="fas fa-file-pdf"></i>
+      </a>
+      <a class="icon-link" href="https://github.com/stevenlsw/reart" class="external-link" disabled>
+        <i class="fab fa-github"></i>
+      </a>
+    </div>
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <div class="columns is-centered"><p>
+            This website template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io">Here</a>.
+          </p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
 
 </body>
 </html>
