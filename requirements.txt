@@ -1,0 +1,11 @@
+torch 
+torchvision
+tqdm
+numpy
+matplotlib
+scipy
+networkx==2.5.1
+plotly
+apted
+trimesh
+chamferdist
