@@ -138,3 +138,4 @@ If you find our work useful in your research, please cite:
 We thank:
 * [Watch It Move](https://github.com/NVlabs/watch-it-move.git) for MST implementation
 * [APTED](https://github.com/JoaoFelipe/apted) for tree edit distance measure
+* [KNN_CUDA](https://github.com/unlimblue/KNN_CUDA.git) for KNN with CUDA support
