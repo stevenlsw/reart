@@ -24,6 +24,7 @@
     </a>
     <a href='https://stevenlsw.github.io/reart/' style='padding-left: 0.5rem;'>
       <img src='https://img.shields.io/badge/Project-Page-blue?style=flat&logo=Google%20chrome&logoColor=blue' alt='Project Page'>
+    <a href='https://colab.research.google.com/drive/16-77HTfuniHwyc9XsvvP_7hyuilNWtjd' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
     <a href='https://www.youtube.com/watch?v=Bdolp3FTZUc' style='padding-left: 0.5rem;'>
       <img src='https://img.shields.io/badge/Youtube-Video-red?style=flat&logo=youtube&logoColor=red' alt='Youtube Video'>
     </a>
@@ -50,6 +51,9 @@ This repository contains a pytorch implementation for the paper: [Building Reart
 
 The code is tested on Python `3.6.13` and Pytorch `1.10.2+cu113`.
 
+## Colab notebook
+Run our [Colab notebook](https://colab.research.google.com/drive/16-77HTfuniHwyc9XsvvP_7hyuilNWtjd) for quick start! 
+
 
 ## Demo
 
@@ -61,12 +65,12 @@ We provide demo data and pretrained model of Nao robot in `demo_data` folder. We
 
 - projection model
 ```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
+python run_robot.py  --seq_path=demo_data/data/nao --graph_root=demo_data/robot --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
 ```
 
 - relaxation model
 ```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
+python run_robot.py  --seq_path=demo_data/data/nao --graph_root=demo_data/robot --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
 ```
 
 After running the above command, you can find the result in `exp/nao`, `result.txt` is the evaluation result, `seg.html` is the visualization of the segmentation, `structure.html` is the visualization of the topology.
@@ -99,7 +103,7 @@ pretrained
 `corr_model.pth.tar` is needed for training. Recommend set `cano_idx` same as our release pretrained model to get the reported performance for each category. 
 
 ```Shell
-python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2 --use_flow_loss --use_nproc --use_assign_loss --downsample 4 --n_iter=15000
+python run_robot.py --seq_path=data/robot/nao --graph_root=demo_data/data/robot --save_root=exp --cano_idx=2 --use_flow_loss --use_nproc --use_assign_loss --downsample 4 --n_iter=15000
 ```
 The relaxation results are stored at `exp/nao/result.pkl` and needed for training projection model.
 
