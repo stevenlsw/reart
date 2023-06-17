@@ -4,6 +4,7 @@ git clone https://github.com/krrish94/chamferdist.git
 cd chamferdist
 python setup.py install
 cd ..
-rm chamferdist
+rm -r chamferdist
 cd networks/pointnet_lib
 python setup.py install
+
