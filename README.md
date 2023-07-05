@@ -57,23 +57,28 @@ Run our [Colab notebook](https://colab.research.google.com/drive/16-77HTfuniHwyc
 
 ## Demo
 
-We provide demo data and pretrained model of Nao robot in `demo_data` folder. We provide two pretrained models, `base-2` is the relaxation model and `kinematic-2` is the projection model. Postfix `2` is the canonical frame index. We select canonical frame index with the lowest energy.
+`demo_data` folder contains data and pretrained model of Nao robot. We provide two pretrained models, `base-2` is the relaxation model and `kinematic-2` is the projection model. Postfix `2` is the canonical frame index. Canonical frame index is selected by the lowest energy.
 
-### Evaluate and visualize model
-`cano_idx` is the canonical frame index, should be consistent with pretrained model.
-
+### Evaluate and visualization
+Canonical frame index `cano_idx` should be consistent with postfix in pretrained model name.
 
 - projection model
 ```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --graph_root=demo_data/robot --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
+python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
 ```
 
 - relaxation model
 ```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --graph_root=demo_data/robot --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
+python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
 ```
 
-After running the above command, you can find the result in `exp/nao`, `result.txt` is the evaluation result, `seg.html` is the visualization of the segmentation, `structure.html` is the visualization of the topology.
+After running the command, results are stored in `${save_root}/${robot name}`. `input.gif` visualize the input sequence, `recon.gif` visualize the reconstruction, 
+`gt.gif` visualize the GT. `seg.html` visualize the pred segmentation, `structure.html` visualize the infered topology. `result.txt` contains the evaluation result. 
+
+Input| Recon | GT
+---|---|---
+![](assets/nao_input.gif) | ![](assets/nao_recon.gif) | ![](assets/nao_gt.gif)
+
 
 
 ## Training
@@ -103,20 +108,18 @@ pretrained
 `corr_model.pth.tar` is needed for training. Recommend set `cano_idx` same as our release pretrained model to get the reported performance for each category. 
 
 ```Shell
-python run_robot.py --seq_path=data/robot/nao --graph_root=demo_data/data/robot --save_root=exp --cano_idx=2 --use_flow_loss --use_nproc --use_assign_loss --downsample 4 --n_iter=15000
+python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2 --use_flow_loss --use_nproc --use_assign_loss --downsample 4 --n_iter=15000
 ```
-The relaxation results are stored at `exp/nao/result.pkl` and needed for training projection model.
+The relaxation results are stored at `${save_root}/${robot name}/result.pkl` and needed for training projection model.
 
 
 ### Train projection model
 
-Specify the relaxation result `base_result_path`
+Set the relaxation result `base_result_path` as above.
+
 ```Shell
 python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2  --use_flow_loss --use_nproc --use_assign_loss --model=kinematic --base_result_path=exp/nao/result.pkl --assign_iter=0 --downsample=2 --assign_gap=1 --snapshot_gap=10
 ```
-
-## Evaluation
-Evaluation is the same as demo. Sepecify `resume` as the stored model path in `exp/nao/model.pth.tar`.
 
 
 ## Citation

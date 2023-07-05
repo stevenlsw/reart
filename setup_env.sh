@@ -6,5 +6,4 @@ python setup.py install
 cd ..
 rm -r chamferdist
 cd networks/pointnet_lib
-python setup.py install
-
+python setup.py install # Compile the CUDA code for PointNet++ backbone

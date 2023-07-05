@@ -5,14 +5,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib import cm
 import plotly.graph_objects as go
+import io
+import imageio
+from PIL import Image
 
 
-def vis_pc(pc, pred_part, gt_part=None, save_path="seg.html"):
+def vis_pc(pc, pred_part, pc_gt=None, gt_part=None, name="pred", save_path=None):
     jet = plt.get_cmap('jet')
-    pc_gt = pc.copy()
-    src_scale = pc[:, 0].max() - pc[:, 0].min()
-    t = max(0, pc[:, 0].max() - pc[:, 0].min() + 0.4 * src_scale)
-    pc_gt[:, 0] = pc_gt[:, 0] + t
     cNorm = colors.Normalize(vmin=0, vmax=len(set(pred_part.tolist())))
     scalarMap = cm.ScalarMappable(norm=cNorm, cmap=jet)
     pc_colors = np.empty((len(pc), 3))
@@ -21,10 +20,17 @@ def vis_pc(pc, pred_part, gt_part=None, save_path="seg.html"):
         pc_idx = pred_part == unique_id
         color = scalarMap.to_rgba(color_idx)[:3]
         pc_colors[pc_idx, :] = np.array(color)[None, :]
-    fig = go.Figure(data=go.Scatter3d(x=pc[:, 0], y=pc[:, 1], z=pc[:, 2],
-                                      mode='markers', name="src",
+    fig = go.Figure(data=go.Scatter3d(x=pc[:, 0], y=pc[:, 2], z=pc[:, 1],
+                                      mode='markers', name=name,
                                       marker=dict(color=pc_colors, size=5)))
     if gt_part is not None:
+        if pc_gt is None:
+            pc_gt = pc.copy()
+        else:
+            pc_gt = pc_gt.copy()
+        src_scale = pc[:, 0].max() - pc[:, 0].min()
+        t = max(0, pc[:, 0].max() - pc[:, 0].min() + 0.4 * src_scale)
+        pc_gt[:, 0] = pc_gt[:, 0] + t
         cNorm = colors.Normalize(vmin=0, vmax=len(set(gt_part.tolist())))
         scalarMap = cm.ScalarMappable(norm=cNorm, cmap=jet)
         gt_colors = np.empty((len(gt_part), 3))
@@ -33,18 +39,42 @@ def vis_pc(pc, pred_part, gt_part=None, save_path="seg.html"):
             pc_idx = gt_part == unique_id
             color = scalarMap.to_rgba(color_idx)[:3]
             gt_colors[pc_idx, :] = np.array(color)[None, :]
-        fig.add_trace(go.Scatter3d(x=pc_gt[:, 0], y=pc_gt[:, 1], z=pc_gt[:, 2],
-                                mode='markers', name="tgt",
+        fig.add_trace(go.Scatter3d(x=pc_gt[:, 0], y=pc_gt[:, 2], z=pc_gt[:, 1],
+                                mode='markers', name="gt",
                                 marker=dict(color=gt_colors, size=5)))
 
-    fig.update_layout(showlegend=True, scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z',
+    fig.update_layout(showlegend=True, scene=dict(xaxis_title='x', yaxis_title='z', zaxis_title='y',
                                                   xaxis=dict(),
                                                   yaxis=dict(),
                                                   zaxis=dict(),
                                                   aspectmode='data'))
-    fig.write_html(save_path)
+    if save_path is not None:
+        fig.write_html(save_path)
     return fig
 
+
+def plotly_fig2array(fig):
+    fig_bytes = fig.to_image(format="png")
+    buf = io.BytesIO(fig_bytes)
+    img = Image.open(buf)
+    return np.asarray(img)
+
+
+def vis_pc_seq(pc_list, pred_part=None, gt_part=None, name="pred", save_path=None):
+    imgs = []
+    for pc in pc_list:
+        if pred_part is None:
+            color = np.expand_dims([0, 0, 1], axis=0).repeat(len(pc), axis=0)
+            fig = go.Figure(data=go.Scatter3d(x=pc[:, 0], y=pc[:, 2], z=pc[:, 1],
+                                    mode='markers', name=name,
+                                    marker=dict(color=color, size=2)))
+        else:
+            fig = vis_pc(pc, pred_part=pred_part, gt_part=gt_part, name=name)
+        imgs.append(plotly_fig2array(fig))
+    if save_path is not None:
+        imageio.mimsave(save_path, imgs, format='gif', duration=0.3)
+    return imgs
+            
 
 def cylinder(r, h, a=0, nt=100, nv=50):
     """
@@ -75,10 +105,10 @@ def vis_structure(pc, pc_part, edges_list, save_path):
         pc_colors[pc_idx, :] = np.array(color)[None, :]
         centroid = pc[pc_idx].mean(axis=0, keepdims=True)
         centroid_dict[unique_id] = centroid
-        fig.add_trace(go.Scatter3d(x=centroid[:, 0], y=centroid[:, 1], z=centroid[:, 2],
+        fig.add_trace(go.Scatter3d(x=centroid[:, 0], y=centroid[:, 2], z=centroid[:, 1],
                                    mode='markers', name="joint_{}".format(unique_id),
                                    marker=dict(color="black", size=20)))
-    fig.add_trace(go.Scatter3d(x=pc[:, 0], y=pc[:, 1], z=pc[:, 2],
+    fig.add_trace(go.Scatter3d(x=pc[:, 0], y=pc[:, 2], z=pc[:, 1],
                                mode='markers', name="pc",
                                marker=dict(color=pc_colors, size=5)))
     for edge in edges_list:
@@ -103,9 +133,9 @@ def vis_structure(pc, pc_part, edges_list, save_path):
             R = np.array([[-1, 0, 0], [0, 1, 0], [0, 0, -1]])
         t = child_centroid + 5e-3 * line2
         cy_pc = cy_pc @ R.T + t
-        fig.add_trace(go.Surface(x=cy_pc[:, :, 0], y=cy_pc[:, :, 1], z=cy_pc[:, :, 2], opacity=0.5, showscale=False))
+        fig.add_trace(go.Surface(x=cy_pc[:, :, 0], y=cy_pc[:, :, 2], z=cy_pc[:, :, 1], opacity=0.5, showscale=False))
 
-    fig.update_layout(showlegend=True, scene=dict(xaxis_title='x', yaxis_title='y', zaxis_title='z',
+    fig.update_layout(showlegend=True, scene=dict(xaxis_title='x', yaxis_title='z', zaxis_title='y',
                                                   xaxis=dict(),
                                                   yaxis=dict(),
                                                   zaxis=dict(),

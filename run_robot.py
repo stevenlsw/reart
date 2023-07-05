@@ -14,7 +14,7 @@ from tqdm import tqdm
 from utils.chamfer import ChamferDistance # https://github.com/krrish94/chamferdist
 from knn_cuda import KNN  # https://github.com/unlimblue/KNN_CUDA
 
-from utils.viz_utils import vis_pc, vis_structure
+from utils.viz_utils import vis_pc, vis_structure, vis_pc_seq
 from utils.model_utils import compute_pc_transform, tau_cosine, compute_ass_err, get_src_permutation_idx, get_tgt_permutation_idx, parallel_lap, compute_group_temporal_err
 from utils.kinematic_utils import extract_kinematic, build_graph, ik, edge_index2edges, compute_root_cost
 from utils.graph_utils import denoise_seg_label, merging_wrapper, mst_wrapper, compute_screw_cost
@@ -56,7 +56,12 @@ def main(args):
     cano_pc = torch.from_numpy(sample['cano_pc']).float().to(device)
     gt_cano_part = torch.from_numpy(sample['gt_cano_part']).long().to(device)
     pc_list = torch.from_numpy(sample['pc_list']).float().to(device) # exclude cano frame
-
+    
+    # visualize input point cloud sequence
+    save_path = os.path.join(save_dir, f"input.gif")
+    vis_pc_seq(sample['pc_list'], name="input", save_path=save_path)
+    print("save input pc vis to {}".format(save_path))
+    
     if args.use_flow_loss:
         knn_corr = KNN(k=1, transpose_mode=False)
         knn_flow = KNN(k=3, transpose_mode=True)
@@ -261,13 +266,22 @@ def main(args):
             recon_err = 100 * recon_err
 
             if i == n_iter - 1 or args.save_vis:
-                save_path = os.path.join(save_dir, f"seg.html")
-                fig = vis_pc(sample['cano_pc'], seg_part_np, sample['gt_cano_part'], save_path)
-                print("saving iter {} seg result to {}".format(i, save_dir))
+                save_path = os.path.join(save_dir, "seg.html")
+                vis_pc(sample['cano_pc'], pred_part=seg_part_np, gt_part=sample['gt_cano_part'], save_path=save_path)
+                print("save seg result to {}".format(save_path))
 
             print(f'Flow eval: EPE: {epe:.3f} | Acc 5: {acc1:.3f} | Acc 10: {acc2:.3f} | Angle: {angle_error:.3f}')
             print(f'Seg eval: RI: {ri:.3f}')
             print(f'Recon eval: recon: {recon_err:.3f}')
+            
+            # visualize reconstructed point cloud sequence
+            save_path = os.path.join(save_dir, f"recon.gif")
+            vis_pc_seq(complete_pred_pc_list, pred_part=seg_part_np, name="reconstruct", save_path=save_path)
+            print("save reconstruct pc vis to {}".format(save_path))
+            
+            save_path = os.path.join(save_dir, f"gt.gif")
+            vis_pc_seq(sample['complete_gt_pc_list'], pred_part=sample['gt_cano_part'], name="gt", save_path=save_path)
+            print("save gt pc vis to {}".format(save_path))
 
             if i == n_iter - 1:
                 f_result = open(os.path.join(save_dir, f"result.txt"), 'w')
@@ -280,15 +294,14 @@ def main(args):
 
                 save_path = os.path.join(save_dir, f"structure.html")
                 vis_structure(sample['cano_pc'], seg_part.cpu().numpy(), joint_connection_list, save_path)
-                print("saving iter {} mst result to {}".format(i, save_dir))
+                print("save structure result to {}".format(save_path))
 
                 uni_label = torch.unique(joint_connection, sorted=True)
                 assert torch.allclose(uni_label, torch.arange(trans_list.shape[1], dtype=uni_label.dtype, device=uni_label.device))
                 root_cost = compute_root_cost(trans_list)
                 pred_root_node = uni_label[root_cost.argmin().item()].item()
 
-                graph_root_path = os.path.join(args.graph_root, dataset.cat)
-                gt_graph, gt_edges_list = load_gt_graph(graph_root_path)
+                gt_graph, gt_edges_list = load_gt_graph(args.seq_path) # load GT graph for GED eval
                 gt_root_node = find_root_node(gt_graph)
                 ted = compute_ted(joint_connection_list, pred_root_node, gt_edges_list, gt_root_node, verbose=True)
 
@@ -344,6 +357,7 @@ def main(args):
                             model_dict.update({"reverse_topo": model.reverse_topo})
 
                     torch.save(model_dict, model_save_path)
+
     print("all done!")
 
 
@@ -362,7 +376,6 @@ if __name__ == "__main__":
     parser.add_argument("--cano_idx", default=0, type=int, help="cano frame idx")
     parser.add_argument("--num_points", default=4096, type=int, help="dataset pc sampled points")
     
-    parser.add_argument("--graph_root", default="data/robot", type=str)
     parser.add_argument("--seq_path", default="data/robot/nao", type=str)
     parser.add_argument("--normalize_file", default="data/category_normalize_scale.pkl", type=str)
 
@@ -409,7 +422,7 @@ if __name__ == "__main__":
     parser.add_argument("--merge_it", default=2, type=int, help="graph geo merging iteration")
 
     # utils func
-    parser.add_argument("--save_root", default="vis", type=str, help="results saving path")
+    parser.add_argument("--save_root", default="vis", type=str, help="results save path")
     parser.add_argument("--save_vis", action="store_true", help="save intermediate optimization")
 
     args = parser.parse_args()

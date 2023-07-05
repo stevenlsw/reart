@@ -9,3 +9,6 @@ plotly
 apted
 trimesh
 chamferdist
+imageio
+Pillow
+kaleido

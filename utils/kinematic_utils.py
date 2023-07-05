@@ -1,3 +1,4 @@
+import os
 import math
 import numpy as np
 from tqdm import tqdm
@@ -8,6 +9,7 @@ import networkx as nx
 
 from utils.dataset_utils import sparse_sample_novel_state
 from utils.graph_utils import compute_root_cost, compute_mean_screw_param, frobenius_cost
+from utils.viz_utils import vis_pc
     
 from screw_se3 import inverse_transformation
 from screw_se3 import dq_to_screw, transform_to_dq
@@ -196,7 +198,7 @@ def fk(paths_to_base, reverse_topo, edge_index, axis_list, moment_list, theta_li
     return fk_trans_list
 
 
-def ik(dataset, model, device, verbose=True, **ikargs):
+def ik(dataset, model, device, verbose=True, vis=True, save_dir=None, **ikargs):
     # robot only
     from networks.model import BaseModel
     sample = dataset[0]
@@ -254,5 +256,12 @@ def ik(dataset, model, device, verbose=True, **ikargs):
         if verbose:
             print(f"Novel retarget err: {recon_err:.3f}")
         retarget_err.append(recon_err)
+
+        if vis and save_dir is not None:
+            os.makedirs(save_dir, exist_ok=True)
+            save_path = os.path.join(save_dir, "novel_{}.html".format(novel_state))
+            vis_pc(pc_trans, seg_part, pc_gt=novel_sample['novel_pc'], gt_part=sample['gt_cano_part'], save_path=save_path)
+            print("save retarget result {} to {}".format(novel_state, save_path))
+            
     retarget_err = np.array(retarget_err).mean()
     return retarget_err
