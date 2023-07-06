@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 import functools
 import random
 import networkx as nx
@@ -14,18 +15,20 @@ from knn_cuda import KNN  # https://github.com/unlimblue/KNN_CUDA
 
 from utils.viz_utils import vis_pc, vis_structure, vis_pc_seq
 from utils.model_utils import compute_pc_transform, tau_cosine, compute_ass_err, get_src_permutation_idx, get_tgt_permutation_idx, parallel_lap, compute_align_trans
-from utils.kinematic_utils import extract_kinematic, build_graph, edge_index2edges
+from utils.kinematic_utils import extract_kinematic, build_graph, edge_index2edges, compute_root_cost
 from utils.graph_utils import denoise_seg_label, merging_wrapper, mst_wrapper, compute_screw_cost
+from utils.eval_utils import eval_seg, compute_chamfer_list
 
-from utils.eval_utils import compute_chamfer_list
-from utils.flow_utils import blend_anchor_motion, compute_corr_list_filter, normalize_pc_list
 
-from dataset.dataset_real import Sequence
+from dataset.dataset_sapien import Sapien
+from utils.sapien_utils import compute_full_flow, eval_flow, load_model, compute_flow_list, seg_propagation_list
+from msync.models.full_net import feature_propagation
 
 from networks.model import BaseModel, KinematicModel
 from networks.loss import recon_loss, flow_loss
 from networks.pointnet2_utils import farthest_point_sample, index_points
 from networks.feature_extractor import get_extractor
+
 
 def main(args):
     # Initialize randoms seeds
@@ -34,9 +37,9 @@ def main(args):
     np.random.seed(args.manual_seed)
     random.seed(args.manual_seed)
 
-    dataset = Sequence(seq_dir=args.seq_path, num_points=args.num_points, cano_idx=args.cano_idx)
-    seq_name = args.seq_path.split("/")[-1]
-    save_dir = os.path.join(args.save_root, seq_name)
+    dataset = Sapien(args.sapien_base_folder, cano_idx=args.cano_idx)
+    exp_name = "sapien_{}".format(args.sapien_idx)
+    save_dir = os.path.join(args.save_root, exp_name)
     os.makedirs(save_dir, exist_ok=True)
 
     if torch.cuda.is_available():
@@ -46,7 +49,7 @@ def main(args):
         device = torch.device("cpu")
 
     chamfer_dist = ChamferDistance()
-    sample = dataset[0]
+    sample = dataset[args.sapien_idx]
     cano_pc = torch.from_numpy(sample['cano_pc']).float().to(device)
 
     complete_pc_list = torch.from_numpy(sample['complete_pc_list']).float().to(device)
@@ -57,25 +60,19 @@ def main(args):
     save_path = os.path.join(save_dir, f"input.gif")
     vis_pc_seq(sample['complete_pc_list'], name="input", save_path=save_path)
     print("save input pc vis to {}".format(save_path))
-    
-    if args.use_flow_loss:
-        knn_corr = KNN(k=1, transpose_mode=False)
-        knn_flow = KNN(k=3, transpose_mode=True)
-        feature_extractor = get_extractor(args)
-        feature_extractor.to(device)
-        feature_extractor.eval()
-        centroid, scale = torch.from_numpy(dataset.centroid).float().to(device), dataset.scale.item()
 
+    complete_gt_part_list = torch.from_numpy(sample['complete_gt_part_list']).long().to(device)
+    gt_full_flow = torch.from_numpy(sample['gt_full_flow']).to(device)
+
+    if args.use_flow_loss:
+        # use multibody-sync predicted flow
+        flow_model = load_model(config_path=args.flow_model_config_path, model_path=args.flow_model_path)
+        flow_model.to(device)
+        flow_model.eval()
+        knn_flow = KNN(k=3, transpose_mode=True)
         complete_pc_list = torch.from_numpy(sample['complete_pc_list']).float().to(device)
-        norm_pc_list = normalize_pc_list(complete_pc_list, centroid, scale)
-        flow_ref_list = []
-        pc_ref_list = []
-        corrs_src_list, corrs_tgt_list = compute_corr_list_filter(norm_pc_list, feature_extractor, knn_corr,
-                                                                  matching="smnn")
-        for idx, (pc_src, pc_tgt, corr_src, corr_tgt) in enumerate(
-                zip(complete_pc_list[:-1], complete_pc_list[1:], corrs_src_list, corrs_tgt_list)):
-            flow_ref_list.append(pc_tgt[corr_tgt] - pc_src[corr_src])
-            pc_ref_list.append(pc_src[corr_src])
+        flow_ref_list, _ = compute_flow_list(flow_model, complete_pc_list)
+        pc_ref_list = complete_pc_list[:-1]
 
     if args.evaluate and args.resume is None:
         raise ValueError("need model path to evaluate!")
@@ -91,7 +88,7 @@ def main(args):
             tau_func = lambda x: tau
             if "cano_idx" in checkpoint:
                 assert args.cano_idx == checkpoint["cano_idx"]
-                
+
     elif args.model == "kinematic":
         if args.resume is None:
             assert args.base_result_path is not None
@@ -101,6 +98,7 @@ def main(args):
             assert args.cano_idx == result['cano_idx']
             seg_part = torch.from_numpy(result['pred_cano_part']).long().to(device)
             trans_list = torch.from_numpy(result['pred_pose_list']).float().to(device)
+
             if "joint_connection" in result:
                 joint_connection = torch.from_numpy(np.array(result['joint_connection'])).long().to(device)
             else:
@@ -141,7 +139,7 @@ def main(args):
             print("=> loaded model checkpoint {}".format(args.resume[0]))
             if "cano_idx" in checkpoint:
                 assert args.cano_idx == checkpoint["cano_idx"]
-                
+
     else:
         raise ValueError("unknown model type {}".format(args.model))
     model.to(device)
@@ -172,6 +170,7 @@ def main(args):
             losses = {}
             loss_info = ""
 
+            # Default with chamfer loss
             dist_loss = recon_loss(pc_trans_list, pc_list, chamfer_dist=chamfer_dist)
             losses.update({"recon_loss": dist_loss.detach().cpu().numpy()})
             loss_info += f"iteration: {i} | recon Loss: {losses['recon_loss']:.3f} | "
@@ -180,7 +179,8 @@ def main(args):
             if args.use_assign_loss and i >= args.assign_iter:
                 if i == args.assign_iter or i % args.assign_gap == 0:
                     num_fps = pc_trans_list.shape[1] // args.downsample
-                    src_idx = farthest_point_sample(cano_pc.unsqueeze(dim=0), num_fps).expand(pc_trans_list.shape[0],                                                                  num_fps)
+                    src_idx = farthest_point_sample(cano_pc.unsqueeze(dim=0), num_fps).expand(pc_trans_list.shape[0],
+                                                                                              num_fps)
                     pc_src = index_points(pc_trans_list, src_idx)
                     tgt_idx = farthest_point_sample(pc_list, num_fps)
                     pc_tgt = index_points(pc_list, tgt_idx)
@@ -203,22 +203,14 @@ def main(args):
                 loss = loss + ass_loss
 
             if args.use_flow_loss:
-
                 with torch.no_grad():
                     query_list = torch.cat((pc_trans_list[:dataset.cano_idx], cano_pc[None], pc_trans_list[dataset.cano_idx:]), dim=0)[:-1]
-                    pred_interpolate_flow_list = []
-                    pred_flow_mask_list = []
-                    for idx, (pc_query, pc_ref, flow_ref) in enumerate(zip(query_list, pc_ref_list, flow_ref_list)):
-                        blended_flow, flow_mask = blend_anchor_motion(pc_query, pc_ref, flow_ref, knn_flow, return_mask=True)
-                        pred_interpolate_flow_list.append(blended_flow)
-                        pred_flow_mask_list.append(flow_mask)
-                pairwise_flow_list = torch.stack(pred_interpolate_flow_list)
-                pred_flow_mask_list = torch.stack(pred_flow_mask_list)
+                    pairwise_flow_list = feature_propagation(query_list, pc_ref_list, flow_ref_list, False)
 
                 complete_pred_pc_list = torch.cat((pc_trans_list[:dataset.cano_idx], cano_pc[None], pc_trans_list[dataset.cano_idx:]), dim=0)
                 pred_flow_list = complete_pred_pc_list[1:, :, :] - complete_pred_pc_list[:-1, :, :]
-                f_loss = args.lambda_flow * flow_loss(pairwise_flow_list, pred_flow_list,
-                                                      flow_mask_list=pred_flow_mask_list, robust=args.use_robust_loss)
+                f_loss = args.lambda_flow * flow_loss(pairwise_flow_list,
+                                                      pred_flow_list)  # flow_mask_list=pred_flow_mask_list
 
                 loss_info += f"flow Loss: {f_loss:.3f} | "
                 losses.update({"flow_loss": f_loss.detach().cpu().numpy()})
@@ -226,14 +218,13 @@ def main(args):
 
             loss_info += f"total Loss: {loss:.3f}"
             losses.update({"total_loss": loss.detach().cpu().numpy()})
-            if not args.silence:
-                print(loss_info)
+            print(loss_info)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             losses.update({"iter": i})
-            
+
         if i % args.snapshot_gap == 0 or i == n_iter - 1:
             trans_list = trans_list.detach()  # [T-1, P, 4, 4]
 
@@ -248,7 +239,8 @@ def main(args):
                     root_part = torch.mode(seg_part).values.item()
                     root_trans = trans_list[:, root_part]
                     align_trans_list = compute_align_trans(trans_list, root_trans)
-                    seg_part = merging_wrapper(seg_part, align_trans_list, cano_pc, chamfer_dist, args.merge_thr, n_it=args.merge_it)
+                    seg_part = merging_wrapper(seg_part, align_trans_list, cano_pc, chamfer_dist, args.merge_thr,
+                                               n_it=args.merge_it)
 
                 if isinstance(model, KinematicModel) and hasattr(model, "edge_index"):
                     joint_connection_list = edge_index2edges(model.edge_index)
@@ -273,9 +265,38 @@ def main(args):
             pred_pc_list_ = pred_pc_list.cpu().numpy()
             complete_pred_pc_list = np.concatenate((pred_pc_list_[:dataset.cano_idx], sample['cano_pc'][None], pred_pc_list_[dataset.cano_idx:]), axis=0)
 
+            seg_part_list = seg_propagation_list(pc_list, pred_pc_list, seg_part, knn)
+            T, P = complete_pc_list.shape[0], trans_list.shape[1]
+            identity_matrix = torch.eye(4, device=cano_pc.device, dtype=cano_pc.dtype)[None, None].expand(1, P, 4, 4)
+            complete_trans_list = torch.cat((trans_list[:cano_idx], identity_matrix, trans_list[cano_idx:]))
+            complete_seg_list = torch.cat((seg_part_list[:cano_idx], seg_part[None], seg_part_list[cano_idx:]))
+            full_flow = compute_full_flow(complete_pc_list, complete_seg_list, complete_trans_list)
+            all_epe3d = eval_flow(full_flow, gt_full_flow)
+            epe = np.mean(all_epe3d).item()
+            epe = 100 * epe  # error in cm
+
+            ri_list = []
+            for (pred_seg, gt_seg) in zip(complete_seg_list, complete_gt_part_list):
+                ri = eval_seg(gt_seg, pred_seg)
+                ri_list.append(ri)
+
+            ri_list = np.array(ri_list)
+            per_ri = np.array(ri_list).mean()
+
+            multi_ri = eval_seg(complete_seg_list.reshape(-1), complete_gt_part_list.reshape(-1))
+
             cd_dist = compute_chamfer_list(pred_pc_list_, sample['pc_list'], reduction="mean")
             cd_err = cd_dist.mean()
             cd_err = cd_err
+
+            mse_dist = np.sqrt(((complete_pred_pc_list - sample['complete_gt_pc_list']) ** 2).sum(axis=-1)).mean(axis=1)
+            recon_err = mse_dist.mean()
+            recon_err = recon_err
+
+            print(f'Flow eval: EPE: {epe:.3f}')
+            print(f'Per-Scan Seg eval: RI: {per_ri:.3f}')
+            print(f'Multi-Scan Seg eval: RI: {multi_ri:.3f}')
+            print(f'Recon eval: recon: {recon_err:.3f}')
 
             if i == n_iter - 1:
                 
@@ -284,16 +305,21 @@ def main(args):
                 vis_pc_seq(complete_pred_pc_list, pred_part=seg_part_np, name="reconstruct", save_path=save_path)
                 print("save reconstruct pc vis to {}".format(save_path))
                 
+                save_path = os.path.join(save_dir, f"gt.gif")
+                vis_pc_seq(sample['complete_gt_pc_list'], pred_part=sample['gt_cano_part'], name="gt", save_path=save_path)
+                print("save gt pc vis to {}".format(save_path))
+
                 save_path = os.path.join(save_dir, "seg.html")
-                vis_pc(sample['cano_pc'], pred_part=seg_part_np, save_path=save_path)
+                vis_pc(sample['cano_pc'], pred_part=seg_part_np, gt_part=sample['gt_cano_part'], save_path=save_path)
                 print("save seg result to {}".format(save_path))
 
                 save_path = os.path.join(save_dir, f"structure.html")
                 vis_structure(sample['cano_pc'], seg_part.cpu().numpy(), joint_connection_list, save_path)
                 print("save structure result to {}".format(save_path))
 
+                f_result = open(os.path.join(save_dir, f"result.txt"), 'w')
+                
                 if not args.evaluate:  # save model prediction
-                    f_result = open(os.path.join(save_dir, f"result.txt"), 'w')
                     ass_err = compute_ass_err(pred_pc_list, pc_list, use_nproc=True)
                     ass_err = ass_err
                     screw_err = compute_screw_cost(trans_list, joint_connection)
@@ -304,17 +330,22 @@ def main(args):
                     f_result.write(f"screw_err: {screw_err:.3f}\n")
                     f_result.write(f"total_err: {total_err:.3f}\n\n")
 
-                    save_dict = {"pred_cano_part": seg_part_np,
-                                "pred_pose_list": trans_list.cpu().numpy(),
-                                "cano_idx": dataset.cano_idx}
+                save_dict = {"pred_cano_part": seg_part_np,
+                             "pred_pose_list": trans_list.cpu().numpy(),
+                             "cano_idx": dataset.cano_idx}
 
-                    save_dict.update({"joint_connection": joint_connection_list})
-                    save_dict.update(sample)
-                    with open(os.path.join(save_dir, "result.pkl"), 'wb') as f:
-                        pickle.dump(save_dict, f)
+                save_dict.update({"joint_connection": joint_connection_list})
+                save_dict.update(sample)
+                with open(os.path.join(save_dir, f"result.pkl"), 'wb') as f:
+                    pickle.dump(save_dict, f)
 
-                    f_result.close()
+                f_result.write(f"recon_err: {recon_err:.3f}\n")
+                f_result.write(f"flow_epe: {epe:.3f}\n")
+                f_result.write(f"per_scan_seg_ri: {per_ri:.3f}\n")
+                f_result.write(f"multi_scan_seg_ri: {multi_ri:.3f}\n")
+                f_result.close()
 
+                if not args.evaluate:
                     model_save_path = os.path.join(save_dir, "model.pth.tar")
                     model_dict = {"state_dict": model.state_dict(), "tau": tau, "cano_idx": args.cano_idx}
 
@@ -333,12 +364,11 @@ def main(args):
                             model_dict.update({"joint_type_list": model.joint_type_list})
 
                     torch.save(model_dict, model_save_path)
-                    
     print("all done!")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Real")
+    parser = argparse.ArgumentParser(description="Sapien")
     # common
     parser.add_argument("--manual_seed", default=2, type=int, help="manual seed")
     parser.add_argument("--resume", type=str, nargs="+", metavar="PATH",
@@ -346,14 +376,11 @@ if __name__ == "__main__":
     parser.add_argument("--evaluate", dest="evaluate", action="store_true", help="evaluate mode")
     parser.add_argument("--snapshot_gap", default=100, type=int,
                         help="How often to take a snapshot vis of the training")
-    parser.add_argument("--silence", action="store_true", help="set verbose False")
     parser.add_argument("--use_cuda", default=1, type=int, help="use GPU (default: True)")
 
     # dataset
     parser.add_argument("--cano_idx", default=0, type=int, help="cano frame idx")
-    parser.add_argument("--num_points", default=4096, type=int, help="dataset pc sampled points")
-
-    parser.add_argument("--seq_path", default="data/real/toy", type=str)
+    parser.add_argument("--seq_path", default="/home/shaowei3/datasets/articulation/robot/nao/test_1", type=str)
     
     # optimization
     parser.add_argument("--start_tau", default=1, type=float, help="gumbel softmax start temperature")
@@ -369,17 +396,15 @@ if __name__ == "__main__":
     parser.add_argument("--num_parts", default=10, type=int, help="seg MLP number of parts")
     parser.add_argument("--model", default="base", type=str, choices=['base', 'kinematic'], help="model type")
     parser.add_argument("--base_result_path", default=None, type=str, help="kinematic model initialization")
-    parser.add_argument("--corr_model_path", default="pretrained/corr_model.pth.tar", help="trained correspondence model")
 
     # flow
     parser.add_argument("--use_flow_loss", action="store_true", help="use flow loss")
-    parser.add_argument("--use_robust_loss", action="store_true", help="use robust flow loss")
 
     # other constraints
     parser.add_argument("--use_assign_loss", action="store_true", help="use pc assignment loss")
     
     parser.add_argument("--use_nproc", action="store_true", help="use multi process to compute assignment loss")
-    parser.add_argument("--downsample", default=4, type=int, help="downsample rate when computing assignment loss")
+    parser.add_argument("--downsample", default=1, type=int, help="downsample rate when computing assignment loss")
     parser.add_argument("--assign_gap", default=5, type=int, help="assignment loss gap")
 
     # loss weight
@@ -395,8 +420,12 @@ if __name__ == "__main__":
 
     # utils func
     parser.add_argument("--save_root", default="exp", type=str, help="results saving path")
-    parser.add_argument("--save_vis", action="store_true", help="save intermediate optimization")
-    
+   
+    # sapien utils
+    parser.add_argument("--sapien_base_folder", default="data/mbs-sapien", type=str, help="sapien dataset base folder")
+    parser.add_argument("--sapien_idx", default=212, type=int, help="sapien dataset test index")
+    parser.add_argument("--flow_model_config_path", type=str, default="msync/config/articulated-full.yaml")
+    parser.add_argument("--flow_model_path", type=str, default="msync/ckpt/articulated-full/best.pth.tar")
     
     args = parser.parse_args()
     os.makedirs(args.save_root, exist_ok=True)

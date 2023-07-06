@@ -403,7 +403,6 @@ if __name__ == "__main__":
     parser.add_argument("--downsample", default=4, type=int, help="downsample rate when computing assignment loss")
     parser.add_argument("--assign_gap", default=5, type=int, help="assignment loss gap")
 
-    
     # loss weight
     parser.add_argument("--lambda_assign", default=3e-1, type=float, help="assignment loss weight")
     parser.add_argument("--lambda_flow", default=1, type=float, help="flow loss weight")
@@ -416,7 +415,7 @@ if __name__ == "__main__":
     parser.add_argument("--merge_it", default=2, type=int, help="graph geo merging iteration")
 
     # utils func
-    parser.add_argument("--save_root", default="vis", type=str, help="results save path")
+    parser.add_argument("--save_root", default="exp", type=str, help="results save path")
     
     args = parser.parse_args()
     os.makedirs(args.save_root, exist_ok=True)

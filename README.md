@@ -117,7 +117,6 @@ python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2 --use
 ```
 The relaxation results are stored at `${save_root}/${robot name}/result.pkl` and needed for training projection model.
 
-
 ### Train projection model
 
 Set the relaxation result `base_result_path` as above.
@@ -125,6 +124,18 @@ Set the relaxation result `base_result_path` as above.
 ```Shell
 python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2  --use_flow_loss --use_nproc --use_assign_loss --model=kinematic --base_result_path=exp/nao/result.pkl --assign_iter=0 --downsample=2 --assign_gap=1 --snapshot_gap=10
 ```
+
+### Evaluate pretrained model
+
+```Shell
+python run_robot.py  --seq_path=data/robot/nao --save_root=exp --cano_idx=2 --evaluate --resume=pretrained/robot/nao/kinematic-2/model.pth.tar --model=kinematic
+```
+
+See all robots and pretrained models in `pretrained/robot`, Take `spot` as another example, you could get
+
+Input| Recon | GT
+---|---|---
+![](assets/spot_input.gif) | ![](assets/spot_recon.gif) | ![](assets/spot_gt.gif)
 
 ## Real-world experiment
 Follow instructions similar to robot. Take `toy` as an example.
@@ -141,6 +152,58 @@ python run_real.py --seq_path=data/real/toy --save_root=exp --cano_idx=0 --use_f
 ```Shell
 python run_real.py --seq_path=data/real/toy --cano_idx=0 --save_root=exp --n_iter=200 --use_flow_loss --use_nproc --use_assign_loss --model=kinematic --assign_iter=0 --assign_gap=1 --snapshot_gap=10 --base_result_path=exp/toy/result.pkl  
 ```
+
+We provide real-scan `toy` and `switch` from `Polycam` app in iPhone. Take `toy` as an example, you could get
+
+Input| Recon
+---|---
+![](assets/toy_input.gif) | ![](assets/toy_recon.gif)
+
+
+## Sapien Experiment
+
+### Setup
+
+- Data
+
+  Follow [multibody-sync](https://github.com/huangjh-pub/multibody-sync.git), download [`mbs_sapien.zip`](https://drive.google.com/file/d/1HR2X0DjgXLwp8K5n2nsvfGTcDMSckX5Z) and unzip it as `mbs_sapien` and put under `data` folder. 
+
+- Model
+
+  We use the [pretrained flow model](https://drive.google.com/file/d/1bomD88-6N1iGsTtftfGvAm9JeOw8gKwb) from [multibody-sync](https://github.com/huangjh-pub/multibody-sync.git) in our method for fair comparison. First clone the repo as `msync`.
+
+  ```Shell
+  git clone https://github.com/huangjh-pub/multibody-sync.git msync
+  ```
+
+  Follow [multibody-sync](https://github.com/huangjh-pub/multibody-sync.git) instruction, download the [trained weights](https://drive.google.com/file/d/1bomD88-6N1iGsTtftfGvAm9JeOw8gKwb/view?usp=sharing) and extract the weights to `msync/ckpt/articulated-full/best.pth.tar`.
+
+### Train relaxation model
+
+Specify `sapien_idx` to select different sapien objects, all experiments use canonical frame 0 `cano_idx=0`.
+
+```Shell
+python run_sapien.py --sapien_idx=212 --save_root=exp --n_iter=2000 --cano_idx=0 --use_flow_loss --use_nproc --use_assign_loss
+```
+
+The relaxation results are stored at `${save_root}/sapien_{sapien_idx}/result.pkl` and needed for training projection model.
+
+### Train projection model
+
+Set the relaxation result `base_result_path` as above.
+
+```Shell
+python run_sapien.py --sapien_idx=212 --save_root=exp --n_iter=200 --cano_idx=0 --model=kinematic --use_flow_loss --use_nproc --use_assign_loss  --assign_iter=0 --assign_gap=1 --snapshot_gap=10 --base_result_path=exp/sapien_212/result.pkl
+```
+
+After training, results are stored in `${save_root}/sapien_{sapien_idx}/`. `result.txt` contains the evaluation result. 
+
+Take `sapien_idx=212`as an example, you could get
+
+Input| Recon | GT
+---|---|---
+![](assets/sapien_212_input.gif) | ![](assets/sapien_212_recon.gif) | ![](assets/sapien_212_gt.gif)
+
 
 ## Citation
 
@@ -160,5 +223,6 @@ If you find our work useful in your research, please cite:
 ## Acknowledges
 We thank:
 * [Watch It Move](https://github.com/NVlabs/watch-it-move.git) for MST implementation
+* [multibody-sync](https://github.com/huangjh-pub/multibody-sync.git) for Sapien dataset setup
 * [APTED](https://github.com/JoaoFelipe/apted) for tree edit distance measure
 * [KNN_CUDA](https://github.com/unlimblue/KNN_CUDA.git) for KNN with CUDA support
