@@ -63,14 +63,14 @@ Run our [Colab notebook](https://colab.research.google.com/drive/16-77HTfuniHwyc
 Canonical frame index `cano_idx` should be consistent with postfix in pretrained model name.
 
 - projection model
-```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
-```
+  ```Shell
+  python run_robot.py --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/kinematic-2/model.pth.tar --model=kinematic
+  ```
 
 - relaxation model
-```Shell
-python run_robot.py  --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
-```
+  ```Shell
+  python run_robot.py --seq_path=demo_data/data/nao --save_root=exp --cano_idx=2 --evaluate --resume=demo_data/pretrained/nao/base-2/model.pth.tar --model=base
+  ```
 
 After running the command, results are stored in `${save_root}/${robot name}`. `input.gif` visualize the input sequence, `recon.gif` visualize the reconstruction, 
 `gt.gif` visualize the GT. `seg.html` visualize the pred segmentation, `structure.html` visualize the infered topology. `result.txt` contains the evaluation result. 
@@ -81,7 +81,7 @@ Input| Recon | GT
 
 
 
-## Training
+## Data and pretrained model
 
 ### Download data
 Download the data from [here](https://drive.google.com/drive/folders/1P87A4nAktU8qUJICoAvoQCWp90YFY6ZG?usp=sharing) and save as `data` folder.
@@ -90,7 +90,10 @@ data
 ├──  robot
 │     └── nao   - robot name
 │     └── ...       
-├──  category_normalize_scale.pkl  - center and scale of each category	
+├──  category_normalize_scale.pkl  - center and scale of each category
+├──  real
+│     └── toy   - real scan object
+│     └── switch  
 ```
 
 ### Download pretrained model
@@ -101,9 +104,11 @@ pretrained
 │     └── nao   - robot name
 │       └── base-{cano_idx}       - pretrained relaxation model			    
 │       └── kinematic-{cano_idx}  - pretrained projection model  
+├──  real
 ├──  corr_model.pth.tar  - pretrained correspondence model
 ```
-
+## Robot Experiment
+Take `nao` as an example.
 ### Train relaxation model
 `corr_model.pth.tar` is needed for training. Recommend set `cano_idx` same as our release pretrained model to get the reported performance for each category. 
 
@@ -121,6 +126,21 @@ Set the relaxation result `base_result_path` as above.
 python run_robot.py --seq_path=data/robot/nao --save_root=exp --cano_idx=2  --use_flow_loss --use_nproc --use_assign_loss --model=kinematic --base_result_path=exp/nao/result.pkl --assign_iter=0 --downsample=2 --assign_gap=1 --snapshot_gap=10
 ```
 
+## Real-world experiment
+Follow instructions similar to robot. Take `toy` as an example.
+
+### Inference
+```Shell
+python run_real.py --seq_path=data/real/toy --evaluate --model=kinematic --save_root=exp --cano_idx=0  --resume=pretrained/real/toy/kinematic-0/model.pth.tar
+```
+### Train relaxation model
+```Shell
+python run_real.py --seq_path=data/real/toy --save_root=exp --cano_idx=0 --use_flow_loss --use_nproc --use_assign_loss --assign_iter=1000 
+```
+### Train projection model
+```Shell
+python run_real.py --seq_path=data/real/toy --cano_idx=0 --save_root=exp --n_iter=200 --use_flow_loss --use_nproc --use_assign_loss --model=kinematic --assign_iter=0 --assign_gap=1 --snapshot_gap=10 --base_result_path=exp/toy/result.pkl  
+```
 
 ## Citation
 
